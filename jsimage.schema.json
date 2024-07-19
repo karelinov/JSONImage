@@ -1,0 +1,51 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "integris.ru/DSS/2.0/JSImage.schema.json",
+    "description": "Схема JSON с информацией о JS схеме, которую следует отобразить на иллюстрации",
+    "$ref": "#/$defs/JSNode",
+
+    "$defs": {
+        "JSNode": {
+            "type": "object",
+            "properties": {
+                "schemaComposition": {
+                    "type": "string",
+                    "description":"Тип композиции содержимого узла. Конечный узел (FIELD) или композитый (прочие значения)",
+                    "enum": [
+                        "FIELD",
+                        "OBJECT",
+                        "ARRAY",
+                        "ONEOF",
+                        "ALLOF",
+                        "ANYOF"
+                    ]
+                },
+                "nodeName": {
+                    "type":"string",
+                    "description":"Название узла. Имя поля в случае FIELD"
+                },
+                "fieldType": {
+                    "type":"string",
+                    "description":"тип данных для поля в случае композиции =FIELD",
+                    "enum": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                    ]
+                },
+                "fieldFormat": {
+                    "type":"string",
+                    "description":"формат данных для поля в случае композиции =FIELD и типа данных string"
+                },
+                "children": {
+                    "type": "array",
+                    "description":"вложенные узлы в случае, если данный узел композитный",
+                    "items": { "$ref": "#" }
+                }
+
+            },
+            "required": ["schemaComposition"]
+        }
+    }
+}
