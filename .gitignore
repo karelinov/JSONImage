@@ -2,3 +2,5 @@ node_modules/*
 DATA/*
 !DATA/IN
 !DATA/IN/*
+/DATA/IN/DT.schema.json
+/DATA/IN/res copy.html
