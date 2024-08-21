@@ -1,3 +1,4 @@
 node_modules/*
-/DATA/
-!/DATA/IN/*
+DATA/*
+!DATA/IN
+!DATA/IN/*
