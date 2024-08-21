@@ -1,0 +1,70 @@
+$schema : https://json-schema.org/draft/2020-12/schema
+$id: integris.ru/DSS/2.0/JSImage.schema.json
+description: Схема JSON с информацией о JS схеме, которую следует отобразить на иллюстрации
+oneOf:
+ - $ref: "#/$defs/JSCompositeNode"
+ - $ref: "#/$defs/JSFieldNode"
+
+$defs:
+  JSNode:
+    type: object
+    properties:
+      nodeType:
+        type: string
+        description: Тип композиции содержимого узла. Комплексный узел с дочерними элементами или конечный узел (поле с именем и типом данных)
+        enum:
+          - NODE
+          - FIELD
+      nodeName:
+        type: string
+        description: Название узла. 
+    required:
+      - nodeType
+  
+
+  JSCompositeNode:
+    type: object
+    description: Комплексный узел, содержащий вложенные элементы (объект, массив, композиционный элемент JS Schema)
+    $ref: "#/$defs/JSNode"
+    properties:
+      compositionType:
+        type: string
+        description: Тип композиции содержимого узла. 
+        enum:
+          - OBJECT
+          - ARRAY
+          - ONEOF
+          - ALLOF
+          - ANYOF
+      children:
+        type: array
+        description: вложенные узлы 
+        items:
+          oneOf:
+            - $ref: "#/$defs/JSCompositeNode"
+            - $ref: "#/$defs/JSFieldNode"
+    required:
+      - compositionType
+      - children
+
+  JSFieldNode:
+    type: object
+    description: поле (имя + тип данных)  
+    $ref: "#/$defs/JSNode"
+    properties: 
+      fieldType:
+        type: string
+        description: тип данных для поля
+        enum:
+          - STRING
+          - NUMBER
+          - BOOLEAN
+          - NULL
+      fieldFormat:
+        type: string
+        description: формат данных для поля 
+    required:
+      - fieldType
+
+
+

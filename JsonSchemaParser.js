@@ -4,22 +4,31 @@
 
 const JSRP = require('@apidevtools/json-schema-ref-parser');
 const jsnode = require('./JSNode.js');
+const TResult = require('./tresult.js');
 
 
 /**
  * Функция возвращает JSON - структуру схемы, содержащую только аспекты, которые будут отображаться на иллюстрации
  * @param {string} inputFile имя разбираемого файла
- * @returns {json} JSON структура
+ * @returns {jsnode.JSNode} структура JSNode
  */
 exports.GetJSData = async function GetJSData(inputFile) {
+  var result = new TResult();
+    
+  try {
     var dereferencedJSONSchema = await GetFlatFile(inputFile);
 
     var currentLevel = 1;
     var currentNode = dereferencedJSONSchema; // текущий узел устанавливаем корнем схемы - там предполагаем наличие элемента "type": "object|array"
     var jsNode =TraverseSchema(currentLevel, currentNode);
-    console.log(JSON.stringify(jsNode));
 
-    return jsNode;
+      result.resultObject = jsNode;
+  }
+  catch (error) {
+   result.result = false;
+   result.resultObject = error;
+  }
+  return result;
 }
 
 /**
@@ -51,16 +60,19 @@ async function GetFlatFile(inputFile) {
  * @param {int} currentlevel текущий уровень вложенности относительно корня
  * @param {*} currentNode текущий узел, по элементам которого надо пройти 
  * @param {*} parentNode  род узел TBD
+ * @returns {jsnode.JSNode} структура JSNode 
  */
-function TraverseSchema(currentlevel, currentNode, parentNode = null) {
-    var parentNodeName = "";
+function TraverseSchema(currentlevel, currentNode, parentNode = null, parentNodeName =null) {
 
     /** @type {jsnode.JSNode} */
-    var jsNode = new jsnode.JSNode();
+    var jsNode;
 
-    if (currentNode.type && currentNode.type === "object") { // для obejct потребуется двигаться глубже
-      console.log("-".repeat(currentlevel)+currentNode+" object ");
-      jsNode.schemaComposition = "OBJECT";
+    if (currentNode.type && currentNode.type === "object") { // для object потребуется двигаться глубже
+      console.log("-".repeat(currentlevel)+" object "+(currentNode.description?currentNode.description.toString():"(no description)"));
+      jsNode = new jsnode.JSCompositeNode();
+      jsNode.compositionType = jsnode.CompositionType.OBJECT;
+      jsNode.nodeName = parentNodeName;
+      jsNode.description = currentNode.description;
 
       // проходимся по дочерним узлам в properties
       let properties = currentNode.properties;
@@ -68,40 +80,50 @@ function TraverseSchema(currentlevel, currentNode, parentNode = null) {
         for (let key in currentNode.properties) {
           if (key) {
             let childNode = properties[key];
-            let childJSNode = TraverseSchema(currentlevel + 1, childNode, currentNode);
+            let childJSNode = TraverseSchema(currentlevel + 1, childNode, currentNode, key);
             jsNode.children.push(childJSNode);
           }
         }
       }
     }
     else if (currentNode.type && currentNode.type === "array") { // для array потребуется двигаться глубже
-      console.log("-".repeat(currentlevel)+currentNode+" array ");
-      jsNode.schemaComposition = "ARRAY";
+      console.log("-".repeat(currentlevel)+" array "+(currentNode.description?currentNode.description.toString():"(no description)"));
+      jsNode = new jsnode.JSCompositeNode();
+      jsNode.compositionType = jsnode.CompositionType.ARRAY;
+      jsNode.nodeName = parentNodeName;
+      jsNode.description = currentNode.description;
 
       let curNode = currentNode.items;
       let key = null
-      let childJSNode = TraverseSchema(currentlevel + 1, curNode, currentNode);
+      let childJSNode = TraverseSchema(currentlevel + 1, curNode, currentNode, key);
       jsNode.children.push(childJSNode);
 
     }
     else {// для прочих/примитивных типов считаем, что достигли "дна" данной ветки - печатаем результат и возврат
-      jsNode.schemaComposition ="FIELD";
+      jsNode = new jsnode.JSFieldNode();
+      jsNode.nodeName = parentNodeName;
+      jsNode.description = currentNode.description;
 
       if (currentNode.type) {
         if (typeof(currentNode.type) ==="string")
-          jsNode.fieldType = currentNode.type;
-        else if (Array.isArray(currentNode.type))   
-          jsNode.fieldType = currentNode.type[0];
+          jsNode.fieldType = jsnode.FieldType.STRING;
+        else if (Array.isArray(currentNode.type)) {  // вообще массива быть не должно - устарело
+          let symbolValue = Symbol.for(currentNode.type[0].toUpperCase());
+          if (Object.keys(jsnode.FieldType).includes(Symbol.keyFor(symbolValue)))
+            jsNode.fieldType = symbolValue;
+          else
+            jsNode.fieldType = jsnode.FieldType.UNKNOWN;
+        }
         else 
-          jsNode.fieldType = "type unknown "+currentNode.type;
+          jsNode.fieldType = jsnode.FieldType.UNKNOWN;
       }   
       else
-        jsNode.fieldType = "type undefined";
+        jsNode.fieldType = jsnode.FieldType.UNDEFINED;
 
       if(currentNode.type ==="string" && currentNode.format)
         jsNode.fieldFormat = currentNode.format;
 
-      console.log("-".repeat(currentlevel)+currentNode+" "+jsNode.fieldType);
+      console.log("-".repeat(currentlevel)+" "+Symbol.keyFor(jsNode.fieldType).toLowerCase() +" "+(currentNode.description?currentNode.description.toString():"(no description)"));
 
     }
   return jsNode;

@@ -1,5 +1,16 @@
 {
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^11.6.4"
-  }
+  },
+  "name": "jsonimage",
+  "version": "1.0.0",
+  "main": "JSNode.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
 }
