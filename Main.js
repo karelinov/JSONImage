@@ -8,7 +8,18 @@ const htp = require('./HTMLTableProducer.js');
 const fs = require('node:fs/promises');
 
 
+/*
+var x = {};
+console.log(x);   
+console.log("x != null "+(x != null));   
+console.log("!(x != null) "+(!(x != null)));   
+console.log("x == null "+(x == null));   
+console.log("x !== null "+(x !== null));   
+console.log("!(x == null) "+(!(x == null)));   
+*/
+
 Main();
+
 
 async function Main() {
 

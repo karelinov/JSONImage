@@ -4,6 +4,7 @@
  */
 
 const jsnode = require('./JSNode.js');
+const cellnode = require('./CellNode.js');
 const jsp = require('./JsonSchemaParser.js');
 const fs = require('node:fs/promises');
 const TResult = require('./tresult.js');
@@ -21,6 +22,11 @@ exports.GetHTMLForNode = async function GetHTMLForNode(jsNode) {
     try {
         // Конструируем из JSNode двумерную матрицу
         var jsMatrix = GetMatrixForNode(jsNode, null, 0, 0);
+        // Вычисляем rowspan для ячеек
+        jsMatrix = SetMatrixRowspan(jsMatrix);
+        // Вычисляем ширину для ячеек
+        jsMatrix = SetColWidth(jsMatrix);
+
 
         // Конструируем HTML - файл с таблицей на основе матрицы
         var htmlResult =  await GetHTMLForMatrix(jsMatrix);
@@ -44,36 +50,47 @@ exports.GetHTMLForNode = async function GetHTMLForNode(jsNode) {
  * Если JSNode - комплексный, расширение матрицы и помещение в неё дочерних узлов "справа" от рассматриваемого 
  *   * 
  * @param {jsnode.JSNode} jsNode текущий узел, который надо поместить в матрицу
- * @param {array<JSNode,JSNode>} resultMatrix рекурсивный параметр с тек. результатом 
+ * @param {array<cellnode.CellNode,cellnode.CellNode>} resultMatrix рекурсивный параметр с тек. результатом 
  * @param {jsnode.JSNode} indexC рекурсивный параметр с тек. столбцом ячейки, куда разместить узел
  * @param {jsnode.JSNode} IndexR рекурсивный параметр с тек. строкой ячейки, куда разместить узел
- * @returns {array<JSNode,JSNode>} двумерный массив, в ячейках - JSNode
+ * @returns {array<cellnode.CellNode,cellnode.CellNode>} двумерный массив, в ячейках - CellNode (JSNode+HTMLData)
  */
 function GetMatrixForNode(jsNode, resultMatrix, indexC, indexR) {
     try {
         var result = resultMatrix;
-        if (!resultMatrix) result = [Array(1)]; // при первом вызове рекурсивной функции создаём двумерный массив из 1 ячейки
+        if (!result) {
+            result = [Array(1)]; // при первом вызове рекурсивной функции создаём двумерный массив из 1 ячейки
+            result[0][0] = new cellnode.CellNode();
+        }
 
-        result[indexC][indexR] = jsNode; // записываем в текущую ячейку текущий узел
+        result[indexC][indexR].jsNode =  jsNode; // записываем в текущую ячейку текущий узел
 
         if (jsNode.nodeType ==  jsnode.NodeType.NODE) { // если тип узла - комплексный - разворачиваем дальше
-            // проходимся по дочерним узлам, записываем их в результирующую матрицу
+        
+            // проходимся по дочерним узлам, инициируем их запись в результирующую матрицу
             for(let i=0; i<jsNode.children.length; i++) {
+                // Сначала расширяем матрицу под дочерние узлы, (если надо) добавляя столбец+ строки под количество дочерних узлов
                 // дочерний элемент вставляется в indexC+1, indexR+<номер доч элемента>
                 // при отсутствии в матрице такого столбца/строки они вставляются
                 if (result.length < indexC+2) {
                     result.length += 1; // добавляем столбец
                     result[result.length-1] = Array(result[0].length); // в столбец - массив с таким же кол-вом элементов, как первом
+                    // заполняем ячейки нового столбца пустыми объектами
+                    for(let indexR1 = 0; indexR1 < result[result.length-1].length; indexR1++)
+                        result[indexC+1][indexR1] = new cellnode.CellNode();
+
                 }
                 if (result[0].length < indexR+i+1) {
-                    for(let i=0; i<result.length; i++) // добавляем строку увеличивая на +1 длину столбцов
-                        result[i].length +=1;
-        
+                    for(let с=0; с<result.length; с++) // добавляем строку увеличивая на +1 длину столбцов
+                        result[с].length +=1;
+
+                    // заполняем ячейки новой строки пустыми объектами
+                    for(let indexC1 = 0; indexC1 < result.length; indexC1++)
+                        result[indexC1][indexR] = new cellnode.CellNode();
                 }
+                // Инициируем запись дочерних узлов в результирующую матрицу
                 result = GetMatrixForNode(jsNode.children[i], result, indexC+1, indexR);
                 indexR = result[0].length; // при рекурсивных вызовах функции мы могли сместиться на много строк вниз, поэтому "встаём" на последнюю строчку матрицы
-                
-                
             }
         }
         else {
@@ -93,7 +110,7 @@ function GetMatrixForNode(jsNode, resultMatrix, indexC, indexR) {
 /**
  * Конструирует РЕЗУЛЬТИРУЮЩИЙ HTML, являющийся иллюстративным материалом для документации
  * 
- * @param {*} jsMatrix двумерный (разряженный) массив/матрица, в ячейках которого помещены объекты JSNode
+ * @param {*} jsMatrix двумерный (разряженный) массив/матрица, в ячейках которого помещены объекты CellNode
  * @returns {TResult<HTML>} РЕЗУЛЬТИРУЮЩИЙ HTML
  */
 async function GetHTMLForMatrix(jsMatrix) {
@@ -108,24 +125,51 @@ async function GetHTMLForMatrix(jsMatrix) {
         var tableString = "";
 
         for(let indexR=0; indexR<jsMatrix[0].length; indexR++) { // конструируем HTML таблицу с размерностью матрицы
-            tableString+="<tr";
-            tableString+=">";
+            tableString+="<tr>"; // строка
+            // конструируем в строке ячейки столбцов
             for(let indexC=0; indexC<jsMatrix.length; indexC++) {
-                let classAttr = "";
-                let cellClass;
-                let cellValue ="";
-                if(jsMatrix[indexC][indexR]) { // если ячейка метрицы не пустая -> там JSNode, записываем его данные в ячейку
-                    // @Type jsnode.JSNode
-                    let curNode = jsMatrix[indexC][indexR];
+                // @Type cellnode.CellNode
+                let curCellNode = jsMatrix[indexC][indexR];
 
-                    cellClass = GetCellClass(curNode);
-                    if (cellClass) classAttr = " class=\""+cellClass+"\"";
-                    cellValue = GetCellText(curNode);
+                if (curCellNode.htmlData.shadowed == false) {// если ранее не вычислили, что ячейка не нужна
+                    tableString+="<td";
+
+                    let classAttr = "";
+                    let cellClass;
+                    let cellValue ="";
+                    let rowspanAttr = "";
+                    let colwidthAttr = "";
+
+                    if(curCellNode.htmlData.rowspan >1)
+                        rowspanAttr = " rowspan=\""+curCellNode.htmlData.rowspan+"\"";
+
+
+                    if(curCellNode.jsNode != null) { // если в ячейке JSNode, записываем его данные в ячейку
+                        // @Type jsnode.JSNode
+                        let curNode = curCellNode.jsNode;
+
+                        cellClass = GetCellClass(curNode);
+                        if (cellClass) classAttr = " class=\""+cellClass+"\"";
+                        cellValue = GetCellText(curNode);
+                    }
+
+                    if (indexR == 0 && curCellNode.htmlData.colwidth >0) {
+                        colwidthAttr = "width:"+curCellNode.htmlData.colwidth+"px;";
+                    }
+
+
+                    tableString+=classAttr+rowspanAttr;
+                    if (colwidthAttr !== "") {
+                        tableString+=" style=\""+colwidthAttr;
+                        tableString+="\"";
+                    }
+                    tableString+=">"
+                    //tableString+=rowspanAttr;
+                    tableString+=cellValue+"</td>"
                 }
-                tableString+="<td";
-                tableString+=classAttr;
-                tableString+=">"
-                tableString+=cellValue+"</td>"
+                else {
+                   //tableString+="<td>shadowed</td>"
+                }
             }
             tableString+="</tr>"
         }
@@ -189,4 +233,74 @@ function GetCellClass(jsNode) {
     }
 
     return result;
+}
+
+/**
+ * Функция устанавливает атрибуты rowspan для ячеек матрицы
+ * @param {*} jsMatrix двумерный (разряженный) массив/матрица, в ячейках которого помещены объекты JSNode
+ * @returns {array<cellnode.JSNode,cellnode.JSNode>} двумерный массив, в ячейках - JSNode
+ */
+function SetMatrixRowspan(jsMatrix) {
+    
+    try {
+
+        // Проходимся по матрице
+        for(let indexR=0; indexR<jsMatrix[0].length; indexR++) { 
+            for(let indexC=0; indexC<jsMatrix.length; indexC++) {
+                // @Type cellnode.CellNode
+                let curCellNode = jsMatrix[indexC][indexR];
+
+                if (curCellNode.jsNode !== null) { // у нас в ячейке есть JSNode. 
+                    if (curCellNode.jsNode.nodeType == jsnode.NodeType.NODE) {
+                        // Пройдёмся по столбцу "вниз", отметим в пустых ячейках, что не нужны. 
+                        // А количество таких запишем в rowspan тек узла
+                        for(let indexR1=indexR+1; indexR1 < indexR+1+curCellNode.jsNode.children.length; indexR1++) { // объединяем не больше ячеек чем дочерних узлов
+                            // @Type cellnode.CellNode
+                            let nextCellNode = jsMatrix[indexC][indexR1];
+
+                            if ((nextCellNode.jsNode == null)) {
+                                nextCellNode.htmlData.shadowed = true;
+                                curCellNode.htmlData.rowspan++;
+                            }
+                            else
+                            break; // если там ниже JSNode, то rowspan-ы не нужны
+                        }
+                    }
+                }
+            }
+        }
+    }
+    catch(error) {
+        throw error;
+    }    
+    return jsMatrix;
+}
+
+/**
+ * Функция устанавливает атрибуты width для столбцов матрицы
+ * @param {*} jsMatrix двумерный (разряженный) массив/матрица, в ячейках которого помещены объекты JSNode
+ * @returns {array<cellnode.JSNode,cellnode.JSNode>} двумерный массив, в ячейках - JSNode
+ */
+function SetColWidth(jsMatrix) {
+    
+    try {
+
+        // Проходимся по матрице
+        for(let indexC=0; indexC<jsMatrix.length; indexC++) {
+            let colwidth = jsMatrix[indexC][0].htmlData.colwidth;
+
+            for(let indexR=0; indexR<jsMatrix[0].length; indexR++) { 
+                if(jsMatrix[indexC][indexR].jsNode !== null) {
+                    if(jsMatrix[indexC][indexR].jsNode.nodeType == jsnode.NodeType.FIELD) // если поле - отмечаем, что надо пошире
+                        colwidth = 200;
+                }
+            }
+            jsMatrix[indexC][0].htmlData.colwidth = colwidth;
+
+        }
+    }
+    catch(error) {
+        throw error;
+    }    
+    return jsMatrix;
 }

@@ -1,3 +1,8 @@
+/**
+ * Модуль с классами JSNode, описывающими структуру JS Schema
+ */
+
+
 const NodeType = Object.freeze({
   NODE: Symbol('NODE'),
   FIELD: Symbol('FIELD')
