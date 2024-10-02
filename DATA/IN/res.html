@@ -2,44 +2,96 @@
 <html>
 <head>
 <style>
-table, th, td {
+table {
   border: 1px solid black;
   border-collapse: collapse;
-  max-width: 200px;
-  max-height: 200px;
+  /*max-width: 10em;  max-height: 10em;*/
 }
 </style>
+<style>
+  th {
+    border: 1px solid black;
+    border-collapse: collapse;
+    /*max-width: 10em;  max-height: 10em;*/
+    min-width: 1em;  min-height: 0.5em;
+  }
+</style>
+<style>
+  td {
+    /*border: 1px solid black;*/
+    max-width: 13em;  max-height: 13em;
+    min-width: 1em;  min-height: 0.5em;
+  }
+  </style>
 <style> .NODE_OBJECT {
+ border: 1px solid black;
  writing-mode:vertical-rl;
  transform: rotate(-180deg);
  background-color: lightpink;
- max-width: 200px;
- max-height: 200px;
+ /*max-width: 10em; max-height: 10em;*/
 }
 </style>
 <style> .NODE_ARRAY {
+ border: 1px solid black;
  writing-mode:vertical-rl;
  transform: rotate(-180deg);
  background-color: lightblue;
- max-width: 200px;
- max-height: 200px;
+ /*max-width: 10em; max-height: 10em;*/
 }
 </style>
 <style> .NODE_Composition {
+ border: 1px solid black; 
  writing-mode:vertical-rl;
  transform: rotate(-180deg);
  background-color: white;
- max-width: 200px;
- max-height: 200px;
+ max-width: 10em;
+ max-height: 10em;
 }
 </style>
+<style>
+  .NODE_FIELD {
+    border: 1px solid black;    
+    font-size: 100%;
+    line-height: 80%;
+    background-color: white;
+  }
+</style>
+<style>
+  .NODE_FIELD_NAME {
+    font-weight: bold;
+    font-size: 100%;
+    white-space: no-wrap;
+
+    line-height: 1em;
+    margin-bottom: 0em;
+
+  }
+</style>
+<style>
+  .NODE_FIELD_TYPE {
+    font-size: 100%;
+    white-space: nowrap;
+    line-height: 1em;
+    margin-bottom: 0em;
+
+  }
+</style>
+<style>
+  .NODE_FIELD_COMMENT {
+    font-style: italic;
+    font-size: 60%;
+    line-height: 1em;
+    margin-bottom: 0em;
+    display:inline-block;
+  }
+</style>
+
 </head>
 <body>
 
 <h2>Colgroup</h2>
-<p>Add the a colgroup with a col element that spans over two columns to define a style for the two columns:</p>
 
-<table style="width: 100%;">
+<table>
 #####    
 </table>
 

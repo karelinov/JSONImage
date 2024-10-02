@@ -25,7 +25,7 @@ exports.GetHTMLForNode = async function GetHTMLForNode(jsNode) {
         // Вычисляем rowspan для ячеек
         jsMatrix = SetMatrixRowspan(jsMatrix);
         // Вычисляем ширину для ячеек
-        jsMatrix = SetColWidth(jsMatrix);
+        //jsMatrix = SetColWidth(jsMatrix);
 
 
         // Конструируем HTML - файл с таблицей на основе матрицы
@@ -154,7 +154,7 @@ async function GetHTMLForMatrix(jsMatrix) {
                     }
 
                     if (indexR == 0 && curCellNode.htmlData.colwidth >0) {
-                        colwidthAttr = "width:"+curCellNode.htmlData.colwidth+"px;";
+                        //colwidthAttr = "width:"+curCellNode.htmlData.colwidth+"px;";
                     }
 
 
@@ -193,14 +193,16 @@ function GetCellText(jsNode) {
 
     try {
         if (jsNode.nodeType == jsnode.NodeType.NODE) {
-            result = (jsNode.nodeName?jsNode.nodeName:"") +" "+Symbol.keyFor(jsNode.compositionType);
+            result +="<span class=\"NODE_FIELD_NAME\">"+(jsNode.nodeName?jsNode.nodeName:"")+"</span><BR>"
+            result +=" <span class=\"NODE_FIELD_TYPE\">"+Symbol.keyFor(jsNode.compositionType)+"</span>"
             if (jsNode.description)
-                result +="<BR>"+jsNode.description
+                result +="<BR><span class=\"NODE_FIELD_COMMENT\">"+jsNode.description+"</span>"
         }
         else {
-            result = (jsNode.nodeName?jsNode.nodeName:"") +" "+Symbol.keyFor(jsNode.fieldType).toLowerCase()
+            result +="<span class=\"NODE_FIELD_NAME\">"+(jsNode.nodeName?jsNode.nodeName:"")+"</span>"
+            result +=" <span class=\"NODE_FIELD_TYPE\">"+Symbol.keyFor(jsNode.fieldType).toLowerCase()+"</span>"
             if (jsNode.description)
-                result +="<BR>"+jsNode.description
+                result +="<BR><span class=\"NODE_FIELD_COMMENT\">"+jsNode.description+"</span>"
         }
     }    
     catch (error) {
@@ -227,6 +229,9 @@ function GetCellClass(jsNode) {
                 case (jsnode.CompositionType.ONEOF): result = "NODE_Composition"; break;
             }
         }
+        if (jsNode.nodeType == jsnode.NodeType.FIELD) {
+            result = "NODE_FIELD";
+        }
     }    
     catch (error) {
         throw error;
@@ -252,9 +257,40 @@ function SetMatrixRowspan(jsMatrix) {
 
                 if (curCellNode.jsNode !== null) { // у нас в ячейке есть JSNode. 
                     if (curCellNode.jsNode.nodeType == jsnode.NodeType.NODE) {
+                        if (curCellNode.jsNode instanceof jsnode.JSCompositeNode && curCellNode.jsNode.compositionType === jsnode.CompositionType.OBJECT) {
+                            // Алгоритм для объекта : ползём по ячейкам вниз, пока в ячейках справа дочерние узлы
+                            // До этого места будем делать rowspan
+                            // При этом ползти надо до конца таблицы, т.к непонятно где закончатся дочерние элементы, а между ними пустые ячейки
+                            let lastConfirmedChildrow = indexR;
+                            if (curCellNode.jsNode.children.length > 0) {
+                                for(let indexR1=indexR+1; indexR1 < jsMatrix[0].length ; indexR1++) { 
+                                    // @Type cellnode.CellNode
+                                    let nextRightNode = jsMatrix[indexC+1][indexR1];
+                                    if (nextRightNode.jsNode !== null) {
+                                        if (curCellNode.jsNode.children.some((node) => node.compare(nextRightNode.jsNode))) // дочерний элемент объекта - значит rowspan edtkbxbdftv 
+                                        lastConfirmedChildrow = indexR1; 
+                                    }
+                                }
+                            }
+                            // добавляем к rowspan-у смещение до последней ячейки с дочерними узлами
+                            curCellNode.htmlData.rowspan += (lastConfirmedChildrow - indexR);
+
+                            // когда поняли, сколько rowspan, проходимся по ячейкам под объектом и отмечаем, что не нужны
+                            if (curCellNode.htmlData.rowspan >1) {
+                                for(let indexR1=indexR+1; indexR1 < indexR+1 + curCellNode.htmlData.rowspan -1; indexR1++) { 
+                                    let nextCellNode = jsMatrix[indexC][indexR1];  
+                                    if ((nextCellNode.jsNode == null)) { // на всякий случай
+                                        nextCellNode.htmlData.shadowed = true; // пишем, что ячейка не нужна (не будет генериться в HTML)
+                                    }
+        
+                                }
+                            }
+                        }
+                        /*
                         // Пройдёмся по столбцу "вниз", отметим в пустых ячейках, что не нужны. 
                         // А количество таких запишем в rowspan тек узла
-                        for(let indexR1=indexR+1; indexR1 < indexR+1+curCellNode.jsNode.children.length; indexR1++) { // объединяем не больше ячеек чем дочерних узлов
+                        //for(let indexR1=indexR+1; indexR1 < indexR+1+curCellNode.jsNode.children.length; indexR1++) { // объединяем не больше ячеек чем дочерних узлов
+                        for(let indexR1=indexR+1; indexR1 < indexR+1+curCellNode.jsNode.children.length-1; indexR1++) { // объединяем не больше ячеек чем дочерних узлов
                             // @Type cellnode.CellNode
                             let nextCellNode = jsMatrix[indexC][indexR1];
 
@@ -265,6 +301,7 @@ function SetMatrixRowspan(jsMatrix) {
                             else
                             break; // если там ниже JSNode, то rowspan-ы не нужны
                         }
+                        */
                     }
                 }
             }

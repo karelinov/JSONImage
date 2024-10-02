@@ -1,11 +1,11 @@
 {
   "dependencies": {
-    "@apidevtools/json-schema-ref-parser": "^11.6.4"
+    "@apidevtools/json-schema-ref-parser": "^11.6.4",
+    "@openapi-contrib/openapi-schema-to-json-schema": "^5.1.0"
   },
   "name": "jsonimage",
   "version": "1.0.0",
   "main": "JSNode.js",
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

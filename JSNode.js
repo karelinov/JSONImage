@@ -46,7 +46,16 @@ class JSNode {
               else throw new Error("Неизвестное поле "+key);  
             }
         }
-    }      
+    }
+    
+    compare(node) {
+      var result = false;
+
+      if (this.nodeType === node.nodeType && this.nodeName == node.nodeName && this.description === node.description)
+        result = true;
+
+      return result;
+    }
 }
 
 /**
@@ -62,6 +71,22 @@ class JSCompositeNode extends JSNode {
     this.nodeType = NodeType.NODE;
   }
 
+  compare(node) {
+    var result = false;
+
+    if (super.compare(node) && this.compositionType === node.compositionType && this.children.length === node.children.length) {
+    if (this.children.length >0) {
+      if (this.children[0].compare(node.children[0])) // Приналичии дочерних узлов незатейливо сравниваем 2 первых
+        result = true;
+    }
+    else  
+      result = true;
+
+    }
+    return result;
+  }
+
+
 } 
 
 /**
@@ -76,6 +101,16 @@ class JSFieldNode extends JSNode {
     super(optionsPOJO);
     this.nodeType = NodeType.FIELD;
   }
+
+  compare(node) {
+    var result = false;
+
+    if (super.compare(node) && this.fieldType === node.fieldType && this.fieldFormat === node.fieldFormat)
+      result = true;
+
+    return result;
+  }
+
 } 
 
 
